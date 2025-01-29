@@ -2,6 +2,7 @@ import tweepy
 import openai
 import os
 import time
+from flask import Flask
 from dotenv import load_dotenv
 
 # Завантаження змінних середовища
@@ -27,8 +28,12 @@ client = tweepy.Client(
     access_token_secret=ACCESS_TOKEN_SECRET
 )
 
-# Список вже оброблених твітів
-processed_tweets = set()
+# Flask додаток для підтримки порту
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return "Twitter Bot is Running"
 
 # Функція для відповіді на згадки
 def reply_to_mentions():
@@ -65,9 +70,9 @@ def reply_to_mentions():
                     # Додаємо твіт у список оброблених
                     processed_tweets.add(tweet_id)
 
-            # Чекаємо **5 хвилин** перед наступною перевіркою (30,0 секунд)
-            print("⏳ Waiting 0.5 minutes before next check...")
-            time.sleep(30)
+            # Чекаємо 5 хвилин перед наступним запитом
+            print("⏳ Waiting 5 minutes before next check...")
+            time.sleep(300)
 
         except tweepy.errors.TooManyRequests:
             print("⚠️ Too many requests! Waiting 15 minutes before retrying...")
@@ -77,6 +82,8 @@ def reply_to_mentions():
             print(f"Unexpected error: {e}")
             time.sleep(300)  # Чекаємо **5 хвилин** перед наступною спробою
 
-# Запуск бота
+# Запуск Flask-сервера на порту, визначеному через PORT
 if __name__ == "__main__":
+    port = int(os.getenv("PORT", 10000))  # Якщо PORT не задано, використовуємо 5000 за замовчуванням
+    app.run(host="0.0.0.0", port=port)
     reply_to_mentions()
