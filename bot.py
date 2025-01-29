@@ -65,17 +65,15 @@ def reply_to_mentions():
         try:
             print("🔍 Checking for new mentions...")
             mentions = api.mentions_timeline()
-
             if mentions:
-                print(f"Found {len(mentions)} new mentions!")
+                print(f"Found {len(mentions)} mentions.")
                 for mention in mentions:
                     tweet_id = mention.id
                     user_id = mention.user.screen_name
                     tweet_text = mention.text
                     print(f"Processing tweet from @{user_id}: {tweet_text}")
-
-                    # Формуємо запит до AI (заміни на свою логіку AI)
-                    ai_response = f"Reply to @{user_id} with AI response: {tweet_text}"
+                    # Логіка для відповіді
+                    ai_response = f"Reply to @{user_id}: {tweet_text}"
 
                     # Відправка відповіді
                     api.update_status(status=ai_response, in_reply_to_status_id=tweet_id)
@@ -83,17 +81,17 @@ def reply_to_mentions():
             else:
                 print("No mentions found.")
 
-            # Чекаємо 5 хвилин перед наступним запитом
+            # Чекаємо 5 хвилин
             print("⏳ Waiting 5 minutes before next check...")
-            time.sleep(30)
+            time.sleep(300)
 
         except tweepy.errors.TooManyRequests:
             print("⚠️ Too many requests! Waiting 15 minutes before retrying...")
-            time.sleep(90)  # Чекаємо 15 хвилин
+            time.sleep(900)
 
         except Exception as e:
             print(f"Unexpected error: {e}")
-            time.sleep(30)  # Чекаємо 5 хвилин перед наступною спробою
+            time.sleep(300)
 
 # Запуск Flask-сервера на порту, визначеному через PORT
 if __name__ == "__main__":
