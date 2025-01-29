@@ -1,64 +1,87 @@
 import tweepy
-import openai
 import os
-import time
-from flask import Flask
+from flask import Flask, redirect, request, url_for
 from dotenv import load_dotenv
 
 # Завантаження змінних середовища
 load_dotenv()
 
 # Twitter API ключі
-BEARER_TOKEN = os.getenv("BEARER_TOKEN")
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET")
 
-# OpenAI API Key
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-openai.api_key = OPENAI_API_KEY
-
-# Підключення до Twitter API
-client = tweepy.Client(
-    bearer_token=BEARER_TOKEN,
-    consumer_key=API_KEY,
-    consumer_secret=API_SECRET,
-    access_token=ACCESS_TOKEN,
-    access_token_secret=ACCESS_TOKEN_SECRET
-)
-
-# Flask додаток для підтримки порту
+# Ініціалізація Flask додатку
 app = Flask(__name__)
 
+# Підключення до Twitter API через OAuth 1.0
+auth = tweepy.OAuth1UserHandler(API_KEY, API_SECRET)
+auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
+
+# Підключення до Twitter через tweepy
+api = tweepy.API(auth)
+
+# Створення стартового шляху для тесту
 @app.route('/')
 def index():
     return "Twitter Bot is Running"
+
+# Шлях для ініціалізації процесу OAuth
+@app.route('/login')
+def login():
+    try:
+        # Отримання URL для авторизації
+        redirect_url = auth.get_authorization_url()
+        return redirect(redirect_url)
+    except tweepy.TweepError:
+        return "Error during authentication!"
+
+# Callback шлях після авторизації користувача
+@app.route('/callback')
+def callback():
+    try:
+        # Отримання oauth_token та oauth_verifier з URL
+        oauth_token = request.args.get('oauth_token')
+        oauth_verifier = request.args.get('oauth_verifier')
+
+        # Отримуємо токен доступу
+        auth.get_access_token(oauth_verifier)
+
+        # Зберігаємо токен доступу у змінних (або базі даних)
+        access_token = auth.access_token
+        access_token_secret = auth.access_token_secret
+
+        # Тепер у вас є доступ до ресурсів користувача
+        user = api.me()
+        return f"Authentication successful! Welcome, {user.name}!"
+
+    except tweepy.TweepError:
+        return "Error during authentication!"
 
 # Функція для відповіді на згадки
 def reply_to_mentions():
     while True:
         try:
-            mentions = client.get_users_mentions(id=client.get_me().data['id'])
-            if mentions.data:
-                for mention in mentions.data:
-                    tweet_id = mention.id
-                    user_id = mention.author_id
-                    tweet_text = mention.text.lower()
+            print("🔍 Checking for new mentions...")
+            mentions = api.mentions_timeline()
 
-                    ai_prompt = f"Reply in English as a crypto expert: {tweet_text}"
-                    response = openai.ChatCompletion.create(
-                        model="gpt-4",
-                        messages=[
-                            {"role": "system", "content": "You are a crypto expert. Always answer in English."},
-                            {"role": "user", "content": ai_prompt}
-                        ]
-                    )
-                    ai_response = response["choices"][0]["message"]["content"].strip()
+            if mentions:
+                print(f"Found {len(mentions)} new mentions!")
+                for mention in mentions:
+                    tweet_id = mention.id
+                    user_id = mention.user.screen_name
+                    tweet_text = mention.text
+                    print(f"Processing tweet from @{user_id}: {tweet_text}")
+
+                    # Формуємо запит до AI (заміни на свою логіку AI)
+                    ai_response = f"Reply to @{user_id} with AI response: {tweet_text}"
 
                     # Відправка відповіді
-                    client.create_tweet(text=f"@{user_id} {ai_response}", in_reply_to_tweet_id=tweet_id)
+                    api.update_status(status=ai_response, in_reply_to_status_id=tweet_id)
                     print(f"✅ Replied to @{user_id}: {ai_response}")
+            else:
+                print("No mentions found.")
 
             # Чекаємо 5 хвилин перед наступним запитом
             print("⏳ Waiting 5 minutes before next check...")
@@ -66,12 +89,13 @@ def reply_to_mentions():
 
         except tweepy.errors.TooManyRequests:
             print("⚠️ Too many requests! Waiting 15 minutes before retrying...")
-            time.sleep(90)  # Чекаємо **15 хвилин**
+            time.sleep(90)  # Чекаємо 15 хвилин
 
         except Exception as e:
             print(f"Unexpected error: {e}")
-            time.sleep(30)  # Чекаємо **5 хвилин** перед наступною спробою
+            time.sleep(30)  # Чекаємо 5 хвилин перед наступною спробою
 
+# Запуск Flask-сервера на порту, визначеному через PORT
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))  # Запуск Flask-сервера
-    reply_to_mentions()
+    port = int(os.getenv("PORT", 5000))  # Якщо PORT не задано, використовуємо 5000 за замовчуванням
+    app.run(host="0.0.0.0", port=port)
