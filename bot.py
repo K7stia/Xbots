@@ -1,7 +1,7 @@
 import tweepy
 import openai
 import os
-import random
+import time
 from dotenv import load_dotenv
 
 # Завантаження змінних середовища
@@ -27,40 +27,43 @@ client = tweepy.Client(
     access_token_secret=ACCESS_TOKEN_SECRET
 )
 
-# Функція для отримання відповіді від GPT-4
-def generate_ai_response(prompt):
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are a crypto expert who answers Twitter mentions in a professional and engaging way. Always answer in English."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return response["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        print(f"Error with OpenAI API: {e}")
-        return "Sorry, I cannot answer right now. Try again later. 😕"
-
-# Функція для відповіді на згадку
+# Функція для відповіді на згадки
 def reply_to_mentions():
-    mentions = client.get_users_mentions(id=client.get_me().data['id'])  # Отримання згадок
-    if mentions.data:
-        for mention in mentions.data:
-            tweet_id = mention.id
-            user_id = mention.author_id
-            tweet_text = mention.text.lower()
+    while True:
+        try:
+            mentions = client.get_users_mentions(id=client.get_me().data['id'])
+            if mentions.data:
+                for mention in mentions.data:
+                    tweet_id = mention.id
+                    user_id = mention.author_id
+                    tweet_text = mention.text.lower()
 
-            # Формуємо запит до AI
-            ai_prompt = f"Reply to this tweet in an engaging, informative way about crypto & Web3: {tweet_text}"
+                    # Генеруємо AI-відповідь
+                    ai_prompt = f"Reply to this tweet in English as a crypto expert: {tweet_text}"
+                    response = openai.ChatCompletion.create(
+                        model="gpt-4",
+                        messages=[
+                            {"role": "system", "content": "You are a crypto expert. Always answer in English."},
+                            {"role": "user", "content": ai_prompt}
+                        ]
+                    )
+                    ai_response = response["choices"][0]["message"]["content"].strip()
 
-            # Генеруємо AI-відповідь
-            response = generate_ai_response(ai_prompt)
+                    # Відправка відповіді
+                    client.create_tweet(text=f"@{user_id} {ai_response}", in_reply_to_tweet_id=tweet_id)
+                    print(f"Replied to @{user_id}: {ai_response}")
 
-            # Надсилаємо відповідь у Twitter
-            client.create_tweet(text=f"@{user_id} {response}", in_reply_to_tweet_id=tweet_id)
-            print(f"Replied to @{user_id}: {response}")
+            # Чекаємо 60 секунд перед наступним запитом
+            time.sleep(60)
 
-# Запуск функції
+        except tweepy.errors.TooManyRequests:
+            print("⚠️ Too many requests! Waiting 15 minutes before retrying...")
+            time.sleep(900)  # Чекаємо 15 хвилин
+
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            time.sleep(60)  # Чекаємо перед наступною спробою
+
+# Запуск бота
 if __name__ == "__main__":
     reply_to_mentions()
