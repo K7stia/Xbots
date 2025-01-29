@@ -27,19 +27,28 @@ client = tweepy.Client(
     access_token_secret=ACCESS_TOKEN_SECRET
 )
 
+# Список вже оброблених твітів
+processed_tweets = set()
+
 # Функція для відповіді на згадки
 def reply_to_mentions():
     while True:
         try:
+            print("🔍 Checking for new mentions...")
             mentions = client.get_users_mentions(id=client.get_me().data['id'])
+
             if mentions.data:
                 for mention in mentions.data:
                     tweet_id = mention.id
                     user_id = mention.author_id
                     tweet_text = mention.text.lower()
 
-                    # Генеруємо AI-відповідь
-                    ai_prompt = f"Reply to this tweet in English as a crypto expert: {tweet_text}"
+                    # Перевіряємо, чи вже відповіли на цей твіт
+                    if tweet_id in processed_tweets:
+                        continue  # Пропускаємо
+
+                    # Формуємо запит до AI
+                    ai_prompt = f"Reply in English as a crypto expert: {tweet_text}"
                     response = openai.ChatCompletion.create(
                         model="gpt-4",
                         messages=[
@@ -51,18 +60,22 @@ def reply_to_mentions():
 
                     # Відправка відповіді
                     client.create_tweet(text=f"@{user_id} {ai_response}", in_reply_to_tweet_id=tweet_id)
-                    print(f"Replied to @{user_id}: {ai_response}")
+                    print(f"✅ Replied to @{user_id}: {ai_response}")
 
-            # Чекаємо 60 секунд перед наступним запитом
-            time.sleep(60)
+                    # Додаємо твіт у список оброблених
+                    processed_tweets.add(tweet_id)
+
+            # Чекаємо **5 хвилин** перед наступною перевіркою (30,0 секунд)
+            print("⏳ Waiting 0.5 minutes before next check...")
+            time.sleep(30)
 
         except tweepy.errors.TooManyRequests:
             print("⚠️ Too many requests! Waiting 15 minutes before retrying...")
-            time.sleep(900)  # Чекаємо 15 хвилин
+            time.sleep(900)  # Чекаємо **15 хвилин**
 
         except Exception as e:
             print(f"Unexpected error: {e}")
-            time.sleep(60)  # Чекаємо перед наступною спробою
+            time.sleep(300)  # Чекаємо **5 хвилин** перед наступною спробою
 
 # Запуск бота
 if __name__ == "__main__":
