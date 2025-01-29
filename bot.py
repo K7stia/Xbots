@@ -65,14 +65,16 @@ def reply_to_mentions():
         try:
             print("🔍 Checking for new mentions...")
             mentions = api.mentions_timeline()
+
             if mentions:
-                print(f"Found {len(mentions)} mentions.")
+                print(f"Found {len(mentions)} mentions!")
                 for mention in mentions:
                     tweet_id = mention.id
                     user_id = mention.user.screen_name
                     tweet_text = mention.text
                     print(f"Processing tweet from @{user_id}: {tweet_text}")
-                    # Логіка для відповіді
+
+                    # Формуємо запит до AI (якщо є)
                     ai_response = f"Reply to @{user_id}: {tweet_text}"
 
                     # Відправка відповіді
@@ -81,7 +83,7 @@ def reply_to_mentions():
             else:
                 print("No mentions found.")
 
-            # Чекаємо 5 хвилин
+            # Чекаємо 5 хвилин перед наступним запитом
             print("⏳ Waiting 5 minutes before next check...")
             time.sleep(30)
 
