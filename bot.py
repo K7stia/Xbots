@@ -81,15 +81,15 @@ def reply_to_mentions():
 
             # Чекаємо 5 хвилин перед наступним запитом
             print("⏳ Waiting 5 minutes before next check...")
-            time.sleep(300)
+            time.sleep(30)
 
         except tweepy.errors.TooManyRequests:
             print("⚠️ Too many requests! Waiting 15 minutes before retrying...")
-            time.sleep(900)  # Чекаємо 15 хвилин
+            time.sleep(90)  # Чекаємо 15 хвилин
 
         except Exception as e:
             print(f"Unexpected error: {e}")
-            time.sleep(300)  # Чекаємо 5 хвилин перед наступною спробою
+            time.sleep(30)  # Чекаємо 5 хвилин перед наступною спробою
 
 # Запуск Flask-сервера та функції для відповіді на згадки в окремому потоці
 if __name__ == "__main__":
