@@ -83,17 +83,17 @@ def reply_to_mentions():
 
             # Чекаємо 5 хвилин
             print("⏳ Waiting 5 minutes before next check...")
-            time.sleep(300)
+            time.sleep(30)
 
         except tweepy.errors.TooManyRequests:
             print("⚠️ Too many requests! Waiting 15 minutes before retrying...")
-            time.sleep(900)
+            time.sleep(90)
 
         except Exception as e:
             print(f"Unexpected error: {e}")
-            time.sleep(300)
+            time.sleep(30)
 
 # Запуск Flask-сервера на порту, визначеному через PORT
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))  # Якщо PORT не задано, використовуємо 5000 за замовчуванням
+    port = int(os.getenv("PORT", 10000))  # Якщо PORT не задано, використовуємо 5000 за замовчуванням
     app.run(host="0.0.0.0", port=port)
